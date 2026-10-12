@@ -1,114 +1,174 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Property Listing API
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+A REST API for a property rental listing app — scoped down to what's needed to browse, filter, and manage listings. Built as a hands-on project to learn backend development with NestJS.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+A companion [Flutter app](#) consumes this API end to end: browsing, filtering, auth, and an owner-facing flow for creating, editing, and photographing listings.
 
-## Description
+## Why this project
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+Firebase handles auth, file storage, and database access invisibly. This project exists to build every one of those pieces by hand instead: real JWT auth with role-based access, a PostgreSQL schema managed through migrations (not an ORM's auto-sync), file uploads validated by actual file content, and a consistent error contract across every endpoint.
 
-## Project setup
+## Features
 
-```bash
-$ npm install
-```
+- **Property listings** — apartments, villas, motels, cabins, and more, each with price, location, amenities, and photos
+- **Browse, filter, search** — by type, city, price range, bedroom count, amenity set, and free-text search, all paginated
+- **Role-based auth** — `USER` → `OWNER` → `ADMIN`, with JWT access tokens and argon2 password hashing. Self-registration creates a plain `USER`; an admin promotes someone to `OWNER` before they can list anything, which is closer to how a real platform gates hosting
+- **Owner listing management** — create, edit, publish/unpublish, and soft-delete, scoped so an owner can only touch their own listings (admins can touch any)
+- **Photo uploads** — multipart upload with file-type validation by magic bytes (not filename or `Content-Type`, which are easy to fake), a cover-image selector enforced at the database level, and reordering
+- **Consistent error contract** — every error, from every endpoint, comes back as `{ error: { code, message, details? } }`
+- **API documentation** — live Swagger UI, generated from the same decorators that validate requests
 
-## Compile and run the project
+## Tech stack
 
-```bash
-# development
-$ npm run start
+- **NestJS** (TypeScript) — REST API, dependency injection, guards, pipes
+- **PostgreSQL** + **TypeORM** — schema managed entirely through migrations, `synchronize` disabled
+- **Passport + JWT** — authentication, with a role-based authorization guard
+- **argon2** — password hashing
+- **class-validator** / **class-transformer** — request validation at the controller boundary
+- **Multer** — multipart file uploads, held in memory for magic-byte inspection before anything touches disk
+- **Swagger** (`@nestjs/swagger`) — auto-generated, interactive API docs
 
-# watch mode
-$ npm run start:dev
+## Getting started
 
-# production mode
-$ npm run start:prod
-```
+### Prerequisites
 
-## Run tests
+- Node.js 18+
+- A local PostgreSQL instance (no Docker dependency — this runs against a plain local install)
+
+### 1. Install dependencies
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+npm install
 ```
 
-## Deployment
+### 2. Configure environment
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+Copy `.env.example` to `.env` and fill in your local Postgres credentials:
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+```
+DATABASE_URL=postgres://postgres:<your-password>@localhost:5432/property_api
+PORT=3000
+JWT_SECRET=<a long random string>
+PUBLIC_BASE_URL=http://localhost:3000
+UPLOAD_DIR=uploads
+```
+
+Create the database:
+
+```sql
+CREATE DATABASE property_api;
+```
+
+### 3. Run migrations
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+npm run migration:run
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+### 4. Seed sample data (optional, but makes the API worth looking at)
 
-## Observability
+```bash
+npm run seed
+```
 
-In production applications, observability is essential for understanding how your system behaves, detecting issues early, and maintaining reliable performance.
+Creates 12 amenities, ~25 properties across 6 cities (apartments, villas, motels, cabins), and two accounts:
 
-[NestJS Observe](https://observe.nestjs.com) automatically instruments your NestJS application, giving you deep visibility into your system with minimal setup:
+| Role | Email | Password |
+|---|---|---|
+| Owner | `owner@example.com` | `Owner12345!` |
+| Admin | `admin@example.com` | `Admin12345!` |
 
-- **Distributed tracing:** Follow requests across services and understand how they flow through your system.
-- **Waterfall analysis:** Visualize request execution and identify slow operations, bottlenecks, and unexpected delays.
-- **Performance analysis:** Analyze application performance in real time and quickly pinpoint areas that need optimization.
-- **Metrics:** Track key application and infrastructure metrics to understand system health and performance trends.
-- **Logging:** Centralize and correlate logs with traces and other telemetry to make debugging easier.
-- **Error tracking:** Detect errors quickly and investigate their root causes with the surrounding context.
-- **SLA monitoring:** Track service-level objectives and identify when your application is approaching or exceeding defined thresholds.
-- **Alarms and alerts:** Set up alerts for critical errors, performance degradation, SLA violations, and other anomalies so your team can react quickly.
+The seed is idempotent — running it again won't duplicate anything.
 
-## Resources
+### 5. Run the app
 
-Check out a few resources that may come in handy when working with NestJS:
+```bash
+npm run start:dev
+```
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Auto-instrument your application with [NestJS Observer](https://observer.nestjs.com). Distributed tracing, metrics, and logging made easy. Error tracking and performance monitoring for your NestJS applications.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+API is live at `http://localhost:3000/api/v1`. Interactive docs at `http://localhost:3000/api/docs`.
 
-## Support
+## NPM scripts
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+| Script | What it does |
+|---|---|
+| `npm run start:dev` | Run the app with hot reload |
+| `npm run build` | Compile TypeScript, checking for type errors |
+| `npm run migration:generate -- <path>` | Generate a migration from entity changes |
+| `npm run migration:create -- <path>` | Scaffold an empty migration file |
+| `npm run migration:run` | Apply pending migrations |
+| `npm run migration:revert` | Roll back the last migration |
+| `npm run seed` | Populate the database with sample data |
 
-## Stay in touch
+## Authentication and roles
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+Three roles, deliberately not granted equally:
 
-## License
+- **`USER`** — the default on self-registration. Can browse and authenticate, nothing more.
+- **`OWNER`** — can create, edit, and delete their own listings. Not self-assignable — an admin grants it via `PATCH /users/:id/role`.
+- **`ADMIN`** — full access, including managing any listing and promoting users. Seeded, not self-registerable.
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+Authenticate with `POST /auth/login`, then send the returned `accessToken` as `Authorization: Bearer <token>` on any protected route. Wrong email and wrong password return an identical 401 on purpose, so the API never reveals which emails are registered.
+
+## API overview
+
+Full interactive docs live at `/api/docs` once the app is running. Summary:
+
+| Method | Path | Access | Notes |
+|---|---|---|---|
+| GET | `/health` | public | |
+| GET | `/amenities` | public | |
+| POST | `/amenities` | admin | |
+| GET | `/properties` | public | Filterable, sortable, paginated |
+| GET | `/properties/:id` | public | Published listings only |
+| POST | `/properties` | owner/admin | Owner is taken from the token |
+| PATCH | `/properties/:id` | owner of it / admin | Partial update |
+| DELETE | `/properties/:id` | owner of it / admin | Soft delete |
+| GET | `/me/properties` | owner/admin | Includes drafts |
+| GET | `/me/properties/:id` | owner of it / admin | Includes drafts |
+| POST | `/properties/:id/images` | owner of it / admin | `multipart/form-data`, field `file` |
+| PATCH | `/properties/:id/images/:imageId` | owner of it / admin | Set cover, reorder |
+| DELETE | `/properties/:id/images/:imageId` | owner of it / admin | |
+| POST | `/auth/register` | public | |
+| POST | `/auth/login` | public | |
+| GET | `/auth/me` | authenticated | |
+| PATCH | `/users/:id/role` | admin | Promote a user to `OWNER` |
+
+`GET /properties` supports `page`, `pageSize`, `type`, `city`, `minPrice`, `maxPrice`, `bedrooms`, `amenities` (comma-separated slugs, matches **all**), `q` (free-text search), `sortBy`, and `sortOrder`.
+
+## Design notes
+
+A few decisions worth knowing if you're reading the code:
+
+- **Migrations, never `synchronize: true`.** TypeORM's auto-sync can silently drop columns; every schema change here is a reviewed, reversible migration.
+- **Money is `numeric(12,2)` with a column transformer.** TypeORM returns `numeric` columns as strings by default — without the transformer, clients would get `"120.00"` instead of `120`.
+- **File uploads are validated by content, not filename.** The first few bytes of the buffer are checked against known JPEG/PNG/WebP signatures before anything is written to disk.
+- **Soft deletes.** Properties are never hard-deleted — `deletedAt` is set, and TypeORM excludes soft-deleted rows from every normal query automatically.
+- **One cover image per property, enforced at the database level** with a partial unique index (`WHERE "isCover" = true`), not just application logic.
+- **Owner routes live at `/me/properties`, not `/properties/mine`** — deliberately, to avoid colliding with the `GET /properties/:id` route, which would otherwise try to parse `mine` as a UUID.
+
+## What's intentionally not here
+
+This is a skills-demonstration project, not a production deployment, so a few things were scoped out on purpose rather than left unfinished by accident:
+
+- No automated test suite — an e2e harness was attempted and dropped after repeated tooling/environment conflicts; every endpoint was verified manually via Swagger and curl instead.
+- No inquiry/contact-form endpoint — the listing detail just shows the owner's email and phone directly.
+- No rate limiting, structured logging, Docker packaging, or public deployment — the API runs locally for demos.
+- No booking, payment, or review system.
+
+## Project structure
+
+```
+src/
+├── amenities/        # Amenity CRUD, lookup table
+├── auth/              # Register, login, JWT strategy/guard, roles guard
+├── common/            # Shared DTOs, enums, transformers, filters
+├── config/            # Env validation
+├── database/          # Data source, migrations, seed scripts
+├── properties/        # Properties, images, owner-scoped routes
+├── storage/            # File storage abstraction (local disk)
+├── users/              # User entity, role management
+├── app.module.ts
+├── app.setup.ts        # Global pipes, filters, prefix, Swagger
+└── main.ts
+```
