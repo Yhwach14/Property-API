@@ -2,7 +2,7 @@
 
 A REST API for a property rental listing app — scoped down to what's needed to browse, filter, and manage listings. Built as a hands-on project to learn backend development with NestJS.
 
-A companion [Flutter app](#) consumes this API end to end: browsing, filtering, auth, and an owner-facing flow for creating, editing, and photographing listings.
+A companion [Flutter app](https://github.com/Yhwach14/Property-App) consumes this API end to end: browsing, filtering, auth, and an owner-facing flow for creating, editing, and photographing listings.
 
 ## Why this project
 
